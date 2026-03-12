@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NETFLIX PARTY 인증</title>
+  <style>
+    /* 기본 테마 설정 (기존 코드 스타일 유지) */
+    body { background: #141414; color: white; font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; text-align: center; }
+    .container { width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; }
+    .main-logo { color: #e50914; font-size: 2.4rem; font-weight: bold; margin-bottom: 10px; letter-spacing: 2px; }
+    .card { background: #222; border: 1px solid #333; border-radius: 12px; padding: 15px; text-align: left; }
+    
+    /* 버튼 스타일 */
+    .btn { width: 100%; padding: 18px 0; border-radius: 12px; border: none; font-weight: bold; font-size: 1.1rem; cursor: pointer; color: white; transition: 0.2s; text-align: center; box-sizing: border-box; margin-top: 5px; }
+    .btn-primary { background: #e50914; box-shadow: 0 4px 15px rgba(229, 9, 20, 0.3); }
+    .btn-secondary { background: #444; border: 1px solid #555; }
+    .btn-outline { background: transparent; border: 1px solid #555; color: #aaa; font-size: 0.9rem; padding: 12px; }
+    
+    /* 입력창 및 위젯 스타일 */
+    input { width: 100%; padding: 15px; margin-bottom: 10px; background: #333; border: 1px solid #555; border-radius: 8px; color: white; box-sizing: border-box; font-size: 1.1rem; text-align: center; }
+    input:focus { outline: none; border-color: #e50914; }
+    
+    .d-day-widget { background: #222; border: 1px solid #333; border-radius: 10px; padding: 15px; text-align: left; }
+    .d-day-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    .d-day-count { font-size: 1.2rem; color: #e50914; font-weight: bold; }
+    .d-day-divider { height: 1px; background: #333; margin: 10px 0; }
+    
+    .copy-chip { background: #333; padding: 12px; border-radius: 8px; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid #444; margin-bottom: 8px; }
+    .copy-chip:active { background: #444; }
+    
+    .hidden { display: none !important; }
+
+    /* 모달 스타일 */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-box { background: #222; padding: 20px; border-radius: 12px; width: 85%; max-width: 400px; border: 1px solid #444; text-align: center; }
+    .modal-content { font-size: 0.95rem; color: #ddd; margin: 15px 0; white-space: pre-wrap; line-height: 1.5; text-align: left; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="main-logo">NETFLIX PARTY</div>
+
+    <div id="gate-screen">
+      <div class="card" style="text-align: center; padding: 30px 20px;">
+        <h3 style="margin-top: 0; color: #ddd;">🔒 인증키 입력</h3>
+        <p style="color: #888; font-size: 0.9rem; margin-bottom: 20px;">전달받으신 인증키를 입력해주세요.</p>
+        
+        <input type="text" id="auth-key-input" placeholder="인증키 입력" autocomplete="off">
+        <button class="btn btn-primary" onclick="verifyKey()">입장하기</button>
+      </div>
+      
+      <div style="margin-top: 20px;">
+        <button class="btn btn-outline" onclick="showNotice()">💬 문의사항</button>
+      </div>
+    </div>
+
+    <div id="main-screen" class="hidden">
+      <div style="color: #aaa; font-size: 1rem; margin-bottom: 5px;">이용해주셔서 감사합니다.</div>
+      <div style="color: #ff6b6b; font-size: 0.9rem; font-weight: bold; margin-bottom: 15px; background: rgba(255, 107, 107, 0.1); padding: 8px; border-radius: 6px;">
+        ⭐ 해당 페이지를 꼭 즐겨찾기(북마크) 해주세요!
+      </div>
+
+      <div class="d-day-widget" id="dday-widget">
+        <div class="d-day-row">
+          <span style="color: #aaa; font-size: 0.85rem;">📅 이용기간 만료일</span>
+          <span id="exp-date" style="font-size: 0.95rem; font-weight: bold;">-</span>
+        </div>
+        <div class="d-day-divider"></div>
+        <div class="d-day-row">
+          <span style="color: #aaa; font-size: 0.85rem;">⏳ 남은 기간</span>
+          <span id="exp-dday" class="d-day-count">-</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 15px;">
+        <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 10px;">📺 넷플릭스 로그인 정보</div>
+        <div class="copy-chip" onclick="copyToClipboard('freenetfltoy00@gmail.com', '계정')">
+          <span style="color: #ccc;">계정</span>
+          <span style="color: white; font-weight: bold;">freenetfltoy00@gmail.com</span>
+        </div>
+        <div class="copy-chip" onclick="copyToClipboard('비밀번호로딩중', '비밀번호')" id="pw-chip">
+          <span style="color: #ccc;">비밀번호</span>
+          <span id="netflix-pw" style="color: #46d369; font-weight: bold; letter-spacing: 1px;">-</span>
+        </div>
+      </div>
+
+      <div style="color: #ccc; font-size: 0.9rem; margin: 20px 0 10px 0;">
+        넷플릭스 메일 발송 후 <b style="color: #e50914;">아래 버튼 클릭</b>
+      </div>
+      
+      <button class="btn btn-primary" onclick="checkAuth()">🚀 코드 / 인증 확인하기</button>
+      <button class="btn btn-secondary" onclick="showGuide()">🔰 도움 버튼</button>
+      
+      <div style="margin-top: 20px;">
+        <span style="color: #666; font-size: 0.8rem; text-decoration: underline; cursor: pointer;" onclick="logout()">인증키 초기화 (로그아웃)</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="modal" class="modal-overlay">
+    <div class="modal-box">
+      <div id="modal-title" style="font-weight: bold; font-size: 1.1rem; color: #e50914; margin-bottom: 10px;">알림</div>
+      <div id="modal-body" class="modal-content"></div>
+      <button class="btn btn-secondary" style="padding: 12px; margin-top: 10px;" onclick="closeModal()">확인</button>
+    </div>
+  </div>
+
+  <script>
+    // --- UI 초기화 및 로컬 스토리지 확인 ---
+    window.onload = () => {
+      const savedKey = localStorage.getItem('netflix_auth_key');
+      if (savedKey) {
+        // 임시 로직: 키가 있으면 바로 메인화면으로. (추후 API 연동 시 여기서 키 유효성 검증 API 호출)
+        document.getElementById('gate-screen').classList.add('hidden');
+        document.getElementById('main-screen').classList.remove('hidden');
+        loadDashboardData(savedKey);
+      }
+    };
+
+    // --- 1. 홈화면 (게이트) 기능 ---
+    function verifyKey() {
+      const keyInput = document.getElementById('auth-key-input').value.trim();
+      if (!keyInput) {
+        showAlert("알림", "인증키를 입력해주세요.");
+        return;
+      }
+      
+      // TODO: 백엔드 API를 호출하여 키가 맞는지 확인하는 로직이 들어갈 자리입니다.
+      // 임시로 무조건 통과시키고 로컬 스토리지에 저장합니다.
+      localStorage.setItem('netflix_auth_key', keyInput);
+      
+      document.getElementById('gate-screen').classList.add('hidden');
+      document.getElementById('main-screen').classList.remove('hidden');
+      
+      loadDashboardData(keyInput);
+    }
+
+    function showNotice() {
+      // TODO: 백엔드에서 TXT_NOTICE_BLOCKED 값을 가져와서 띄워줍니다.
+      showAlert("💬 문의사항", "이용기간 확인하신 후\n현재 정상적인 이용자로 판단되시면\n채팅 부탁드립니다.\n(※ 백엔드 연동 전 임시 텍스트입니다)");
+    }
+
+    // --- 2. 메인화면 기능 ---
+    function loadDashboardData(key) {
+      // TODO: 백엔드 API를 호출하여 D-Day, 만료일, 비밀번호 등을 가져와 화면에 뿌려줍니다.
+      document.getElementById('exp-date').innerText = "2026-04-15 (예시)";
+      document.getElementById('exp-dday').innerText = "D-34";
+      document.getElementById('netflix-pw').innerText = "Free#TY03";
+    }
+
+    function checkAuth() {
+      const savedKey = localStorage.getItem('netflix_auth_key');
+      // TODO: 백엔드 API로 인증 파싱 요청을 보냅니다.
+      showAlert("처리 중", "넷플릭스 이메일함을 확인하고 있습니다...\n(API 연동 대기 중)");
+    }
+
+    function showGuide() {
+      // TODO: 백엔드에서 도움말 텍스트를 가져와서 띄워줍니다.
+      const guideHtml = `
+        <div style="margin-bottom: 15px;">
+          <b style="color:#e50914;">📺 TV 인증 방법</b><br>
+          <span style="font-size: 0.85rem;">1. TV 화면에서 [이메일 보내기] 클릭<br>2. 약 3초 뒤 이 앱의 [인증 확인하기] 버튼 클릭<br>3. 이동된 화면에서 [예, 본인입니다] 클릭</span>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <b style="color:#e50914;">📱 모바일 인증 방법</b><br>
+          <span style="font-size: 0.85rem;">1. 모바일 앱에서 인증 코드 요청<br>2. 약 3초 뒤 이 앱의 [인증 확인하기] 버튼 클릭<br>3. 이동된 화면의 숫자 코드를 모바일 앱에 입력</span>
+        </div>
+        <div>
+          <b style="color:#e50914;">🔑 로그인 코드 도움말</b><br>
+          <span style="font-size: 0.85rem;">로그인 시 4자리 코드가 필요하면<br>[고객지원] - [대신 비밀번호 사용]을 이용하세요.</span>
+        </div>
+      `;
+      showAlert("🔰 이용 가이드", guideHtml);
+    }
+
+    function logout() {
+      localStorage.removeItem('netflix_auth_key');
+      document.getElementById('auth-key-input').value = "";
+      document.getElementById('main-screen').classList.add('hidden');
+      document.getElementById('gate-screen').classList.remove('hidden');
+    }
+
+    // --- 유틸리티 기능 ---
+    function copyToClipboard(text, label) {
+      if(text === '비밀번호로딩중') text = document.getElementById('netflix-pw').innerText;
+      
+      const tempInput = document.createElement("input");
+      document.body.appendChild(tempInput);
+      tempInput.value = text;
+      tempInput.select();
+      document.execCommand("copy");
+      document.body.removeChild(tempInput);
+      showAlert("복사 완료", `[${label}] 항목이 복사되었습니다.`);
+    }
+
+    function showAlert(title, body) {
+      document.getElementById('modal-title').innerText = title;
+      document.getElementById('modal-body').innerHTML = body;
+      document.getElementById('modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('modal').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
