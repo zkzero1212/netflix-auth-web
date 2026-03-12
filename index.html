@@ -95,9 +95,10 @@
       
       <div style="margin-top: 20px;">
         <span style="color: #666; font-size: 0.8rem; text-decoration: underline; cursor: pointer;" onclick="logout()">인증키 초기화 (로그아웃)</span>
-        <div id="app-version" style="color: #444; font-size: 0.75rem; margin-top: 15px;"></div>
       </div>
     </div>
+
+    <div id="app-version" style="color: #666; font-size: 0.8rem; margin-top: 25px;">Build: 로딩 중...</div>
 
   </div>
 
@@ -110,22 +111,49 @@
   </div>
 
   <script>
-    // ==========================================
-    // ★ 주의: 아래 URL을 본인의 GAS 웹 앱 URL로 반드시 변경하세요!
-    // ==========================================
-    const API_URL = "https://script.google.com/macros/s/AKfycbz2Miw2UtLT9yoVqd3OBQX1AeJTjDdplc_aczsIAjjzM9mkt15XusyQGAM9r3dXH9Vc/exec";
+    // =========================================================================
+    // ★ 가장 중요한 부분: 아래 "" 안의 주소를 관리자님의 GAS 웹 앱 주소로 변경하세요!
+    // (예: "https://script.google.com/macros/s/AKfycb.../exec")
+    // =========================================================================
+    const API_URL = "여기에_GAS_주소를_넣어주세요";
     
-    // DB에서 받아온 안내문구를 저장할 전역 변수
-    let dbTexts = { notice: "공지사항을 불러오지 못했습니다.", helpTv: "", helpMobile: "", helpLogin: "" };
+    // DB에서 받아올 공지사항 및 가이드 텍스트
+    let dbTexts = { notice: "공지사항을 불러오는 중입니다...", helpTv: "", helpMobile: "", helpLogin: "" };
 
-    window.onload = () => {
+    // 사이트 접속 시 가장 먼저 실행되는 로직
+    window.onload = async () => {
+      // 1. 사이트가 켜지자마자 인증키 없이도 '버전'과 '공지사항'을 먼저 긁어옵니다. (init)
+      try {
+        const initRes = await fetch(`${API_URL}?action=init`);
+        const initData = await initRes.json();
+        if(initData.success) {
+          document.getElementById('app-version').innerText = "Build: " + initData.version;
+          dbTexts.notice = initData.notice;
+        }
+      } catch(e) {
+        document.getElementById('app-version').innerText = "Build: 확인 불가";
+        console.error("초기 데이터 로드 실패", e);
+      }
+
+      // 2. 이전에 접속한 기록(로컬 스토리지에 저장된 키)이 있는지 확인합니다.
       const savedKey = localStorage.getItem('netflix_auth_key');
       if (savedKey) {
+        // 기록이 있으면 자동으로 키를 검증하고 메인 화면으로 넘깁니다.
         verifyKeyBackend(savedKey);
       }
     };
 
-    // 1. 키 검증 및 데이터 로드 API 호출
+    // [입장하기] 버튼을 눌렀을 때 실행되는 함수
+    function verifyKey() {
+      const keyInput = document.getElementById('auth-key-input').value.trim();
+      if (!keyInput) {
+        showAlert("알림", "인증키를 입력해주세요.");
+        return;
+      }
+      verifyKeyBackend(keyInput);
+    }
+
+    // 백엔드에 키가 맞는지 물어보고 데이터를 가져오는 함수
     async function verifyKeyBackend(key) {
       showModal("로딩 중", "인증 정보를 확인하는 중입니다...");
       try {
@@ -134,18 +162,17 @@
         closeModal();
 
         if (result.success) {
-          // 키가 유효하면 로컬스토리지에 저장하고 메인화면으로 전환
+          // 키가 맞으면 브라우저에 키를 저장하고 화면을 전환합니다.
           localStorage.setItem('netflix_auth_key', key);
           
           document.getElementById('gate-screen').classList.add('hidden');
           document.getElementById('main-screen').classList.remove('hidden');
           
-          // 받아온 데이터를 화면에 렌더링
+          // 화면에 데이터 뿌리기
           document.getElementById('netflix-pw').innerText = result.data.pw;
           document.getElementById('exp-date').innerText = result.data.expDate;
-          document.getElementById('app-version').innerText = "Build: " + (result.data.version || "v1.0.0");
           
-          // D-Day 계산 (만료일 자정 기준)
+          // D-Day 계산
           const expDate = new Date(result.data.expDate + "T23:59:59");
           const diffDays = Math.floor((expDate - new Date()) / 86400000);
           
@@ -157,34 +184,23 @@
             document.getElementById('exp-dday').style.color = "#e50914";
           }
 
-          // 안내 텍스트를 메모리에 저장
-          dbTexts.notice = result.data.notice;
+          // 도움말 텍스트 덮어쓰기
           dbTexts.helpTv = result.data.helpTv;
           dbTexts.helpMobile = result.data.helpMobile;
           dbTexts.helpLogin = result.data.helpLogin;
 
         } else {
-          // 키가 틀리거나 만료된 경우 강제 로그아웃 처리
+          // 키가 틀리면 튕겨내기
           logout();
           showAlert("접근 거부", result.message);
         }
       } catch (err) {
         closeModal();
-        showAlert("네트워크 오류", "서버와 통신할 수 없습니다.");
+        showAlert("네트워크 오류", "서버와 통신할 수 없습니다. (API 주소가 정확한지 확인해주세요.)");
       }
     }
 
-    // 게이트 화면의 '입장하기' 버튼 동작
-    function verifyKey() {
-      const keyInput = document.getElementById('auth-key-input').value.trim();
-      if (!keyInput) {
-        showAlert("알림", "인증키를 입력해주세요.");
-        return;
-      }
-      verifyKeyBackend(keyInput);
-    }
-
-    // 메일 파싱 (인증 확인) API 호출
+    // 넷플릭스 메일 파싱 실행 함수
     async function checkAuth() {
       const savedKey = localStorage.getItem('netflix_auth_key');
       if (!savedKey) return logout();
@@ -198,16 +214,13 @@
 
         if (result.success) {
           if (result.type === 'url') {
-            window.location.href = result.url; // 인증 링크로 바로 이동
+            window.location.href = result.url; 
           } else if (result.type === 'code') {
             const codeHtml = `<div style="font-size:2.5rem; color:#e50914; font-weight:bold; letter-spacing:5px; text-align:center; margin: 20px 0;">${result.code}</div>`;
             showAlert("🔑 로그인 코드", codeHtml);
           }
         } else {
-          // 오류 발생 시 (메일 없음, 또는 인증키 만료)
-          if(result.message.includes("만료")) {
-            logout();
-          }
+          if(result.message.includes("만료")) logout();
           showAlert("인증 실패", result.message);
         }
       } catch (err) {
@@ -216,32 +229,12 @@
       }
     }
 
-    // 공지사항 모달 띄우기 (게이트 화면)
+    // 문의사항(공지사항) 띄우기
     function showNotice() {
-      // 문의 버튼을 눌렀을 때는 DB 데이터를 로드하기 전일 수 있으므로 API를 통해 가져와야 합니다.
-      showModal("로딩 중", "공지사항을 불러오는 중입니다...");
-      
-      // 편의상 임시 키 값 없이 verify만 호출하여 notice만 가져오도록 우회할 수 있지만,
-      // 가장 간단한 방법은 공지사항 텍스트만 가져오는 별도 API 로직 없이 하드코딩하거나 
-      // 앱 초기화 시 공지사항만 먼저 불러오도록 하는 것입니다. 
-      // 현재는 로딩 실패 방지를 위해 DB가 연결되지 않았을 때의 기본 텍스트를 출력합니다.
-      
-      fetch(`${API_URL}?action=verify&key=NOTICE_ONLY`)
-        .then(res => res.json())
-        .then(data => {
-            // 백엔드 구조상 key가 틀리면 값을 안주므로, 
-            // 현재 구조에 맞게 게이트 화면 공지사항은 "DB에 설정된 안내사항이 표시됩니다." 
-            // 또는 백엔드 코드를 살짝 우회해야 합니다. 
-            // (보안상 외부인은 공지사항 내용을 볼 수 없는 구조가 됩니다.)
-            closeModal();
-            showAlert("💬 문의사항", "이용기간 확인하신 후\n현재 정상적인 이용자로 판단되시면\n채팅 부탁드립니다.");
-        }).catch(() => {
-            closeModal();
-            showAlert("💬 문의사항", "이용기간 확인하신 후\n현재 정상적인 이용자로 판단되시면\n채팅 부탁드립니다.");
-        });
+      showAlert("💬 문의사항", dbTexts.notice);
     }
 
-    // 이용 가이드 모달 띄우기 (메인 화면)
+    // 이용 가이드 띄우기
     function showGuide() {
       const guideHtml = `
         <div style="margin-bottom: 15px;">
@@ -260,7 +253,7 @@
       showAlert("🔰 이용 가이드", guideHtml);
     }
 
-    // 로그아웃 (스토리지 비우기 및 UI 초기화)
+    // 초기화 (로그아웃)
     function logout() {
       localStorage.removeItem('netflix_auth_key');
       document.getElementById('auth-key-input').value = "";
@@ -268,7 +261,7 @@
       document.getElementById('gate-screen').classList.remove('hidden');
     }
 
-    // 클립보드 복사 유틸리티
+    // 클립보드 복사
     function copyToClipboard(text, label) {
       if(text === '비밀번호로딩중') text = document.getElementById('netflix-pw').innerText;
       const tempInput = document.createElement("input");
@@ -280,16 +273,13 @@
       showAlert("복사 완료", `[${label}] 항목이 복사되었습니다.`);
     }
 
-    // 공통 모달 조작 함수
+    // 모달 관리
     function showAlert(title, body) {
       document.getElementById('modal-title').innerText = title;
       document.getElementById('modal-body').innerHTML = body;
       document.getElementById('modal').style.display = 'flex';
     }
-
-    function closeModal() { 
-      document.getElementById('modal').style.display = 'none'; 
-    }
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
   </script>
 </body>
 </html>
