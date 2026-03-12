@@ -64,7 +64,7 @@
       </div>
 
       <div class="card" style="margin-top: 15px;">
-        <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 10px;">📺 넷플릭스 로그인 정보</div>
+        <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 10px;">📺 넷플릭스 로그인 정보 <span style="font-size: 0.75rem; color: #888;">(클릭 시 복사됩니다)</span></div>
         <div class="copy-chip" onclick="copyToClipboard('freenetfltoy00@gmail.com', '계정')">
           <span style="color: #ccc;">계정</span>
           <span style="color: white; font-weight: bold;">freenetfltoy00@gmail.com</span>
@@ -85,6 +85,12 @@
       <div style="margin-top: 20px;">
         <span style="color: #666; font-size: 0.8rem; text-decoration: underline; cursor: pointer;" onclick="logout()">인증키 초기화 (로그아웃)</span>
       </div>
+
+      <div style="margin-top: 25px; text-align: left; background: #2a2a2a; border-radius: 8px; padding: 15px; border: 1px solid #444;">
+        <div style="color: #e50914; font-size: 0.95rem; font-weight: bold; margin-bottom: 8px;">📢 공지사항</div>
+        <div id="main-notice-text" style="color: #ccc; font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap;">로딩 중...</div>
+      </div>
+
     </div>
 
     <div id="app-version" style="color: #666; font-size: 0.8rem; margin-top: 25px;">Build: 로딩 중...</div>
@@ -101,13 +107,14 @@
   </div>
 
   <script>
-    // 전달해주신 백엔드 URL을 적용했습니다.
-    const API_URL = "https://script.google.com/macros/s/AKfycbz2Miw2UtLT9yoVqd3OBQX1AeJTjDdplc_aczsIAjjzM9mkt15XusyQGAM9r3dXH9Vc/exec";
+    // ==========================================
+    // ★ 따옴표("") 안에 본인의 GAS 웹 앱 주소를 넣어주세요.
+    // ==========================================
+    const API_URL = "여기에_GAS_주소를_넣어주세요";
     
     let dbTexts = { notice: "공지사항을 불러오는 중입니다...", helpTv: "", helpMobile: "", helpLogin: "" };
 
     window.onload = () => {
-      // 1. 캐시된 데이터가 있으면 0.01초 만에 즉시 화면에 띄움 (체감 속도 대폭 향상)
       const cachedVersion = localStorage.getItem('cached_version');
       const cachedNotice = localStorage.getItem('cached_notice');
       
@@ -118,14 +125,12 @@
         dbTexts.notice = cachedNotice;
       }
 
-      // 2. 화면 로딩을 멈추지 않고, 백그라운드에서 조용히 최신 데이터를 가져옴
       fetch(`${API_URL}?action=init`)
         .then(res => res.json())
         .then(initData => {
           if(initData.success) {
             document.getElementById('app-version').innerText = "Build: " + initData.version;
             dbTexts.notice = initData.notice;
-            // 다음 접속을 위해 최신 데이터 로컬 스토리지에 저장
             localStorage.setItem('cached_version', initData.version);
             localStorage.setItem('cached_notice', initData.notice);
           }
@@ -167,6 +172,9 @@
           
           document.getElementById('netflix-pw').innerText = result.data.pw;
           document.getElementById('exp-date').innerText = result.data.expDate;
+          
+          // ★ 추가된 부분: 메인 화면 공지사항 업데이트
+          document.getElementById('main-notice-text').innerText = result.data.mainNotice;
           
           if(result.data.expDate && result.data.expDate !== "날짜 형식 오류" && result.data.expDate !== "-") {
             const expDate = new Date(result.data.expDate + "T23:59:59");
