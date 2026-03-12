@@ -86,7 +86,7 @@
       </div>
     </div>
 
-    <div id="app-version" style="color: #666; font-size: 0.8rem; margin-top: 25px;">Build: 0.11</div>
+    <div id="app-version" style="color: #666; font-size: 0.8rem; margin-top: 25px;">Build: 로딩 중...</div>
   </div>
 
   <div id="modal" class="modal-overlay">
@@ -98,9 +98,7 @@
   </div>
 
   <script>
-    // ==========================================
-    // ★ 따옴표("") 안에 본인의 GAS 웹 앱 주소를 넣어주세요.
-    // ==========================================
+    // 전달해주신 URL을 기본값으로 고정했습니다.
     const API_URL = "https://script.google.com/macros/s/AKfycbz2Miw2UtLT9yoVqd3OBQX1AeJTjDdplc_aczsIAjjzM9mkt15XusyQGAM9r3dXH9Vc/exec";
     
     let dbTexts = { notice: "공지사항을 불러오는 중입니다...", helpTv: "", helpMobile: "", helpLogin: "" };
@@ -110,9 +108,11 @@
         const initRes = await fetch(`${API_URL}?action=init`);
         const initData = await initRes.json();
         if(initData.success) {
+          document.getElementById('app-version').innerText = "Build: " + initData.version;
           dbTexts.notice = initData.notice;
         }
       } catch(e) {
+        document.getElementById('app-version').innerText = "Build: 확인 불가";
         console.error("초기 데이터 로드 실패", e);
       }
 
@@ -132,7 +132,7 @@
     }
 
     async function verifyKeyBackend(key) {
-      showModal("로딩 중", "인증 정보를 확인하는 중입니다...");
+      showAlert("로딩 중", "인증 정보를 확인하는 중입니다..."); // 오타 수정: showModal -> showAlert
       try {
         const response = await fetch(`${API_URL}?action=verify&key=${encodeURIComponent(key)}`);
         const result = await response.json();
@@ -179,7 +179,7 @@
       const savedKey = localStorage.getItem('netflix_auth_key');
       if (!savedKey) return logout();
 
-      showModal("처리 중", "넷플릭스 이메일함을 확인하고 있습니다...\n(약 2~5초 소요)");
+      showAlert("처리 중", "넷플릭스 이메일함을 확인하고 있습니다...\n(약 2~5초 소요)"); // 오타 수정: showModal -> showAlert
       
       try {
         const response = await fetch(`${API_URL}?action=auth&key=${encodeURIComponent(savedKey)}`);
