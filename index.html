@@ -101,28 +101,40 @@
   </div>
 
   <script>
-    // ==========================================
-    // ★ 따옴표("") 안에 본인의 GAS 웹 앱 주소를 넣어주세요.
-    // ==========================================
-    const API_URL ="https://script.google.com/macros/s/AKfycbz2Miw2UtLT9yoVqd3OBQX1AeJTjDdplc_aczsIAjjzM9mkt15XusyQGAM9r3dXH9Vc/exec";
+    // 전달해주신 백엔드 URL을 적용했습니다.
+    const API_URL = "https://script.google.com/macros/s/AKfycbz2Miw2UtLT9yoVqd3OBQX1AeJTjDdplc_aczsIAjjzM9mkt15XusyQGAM9r3dXH9Vc/exec";
     
     let dbTexts = { notice: "공지사항을 불러오는 중입니다...", helpTv: "", helpMobile: "", helpLogin: "" };
 
-    window.onload = async () => {
-      // 사이트 접속 시 백그라운드에서 초기 데이터(버전, 공지)만 불러오고 로컬 로그인은 돌리지 않습니다.
-      try {
-        const initRes = await fetch(`${API_URL}?action=init`);
-        const initData = await initRes.json();
-        if(initData.success) {
-          document.getElementById('app-version').innerText = "Build: " + initData.version;
-          dbTexts.notice = initData.notice;
-        }
-      } catch(e) {
-        document.getElementById('app-version').innerText = "Build: 확인 불가";
+    window.onload = () => {
+      // 1. 캐시된 데이터가 있으면 0.01초 만에 즉시 화면에 띄움 (체감 속도 대폭 향상)
+      const cachedVersion = localStorage.getItem('cached_version');
+      const cachedNotice = localStorage.getItem('cached_notice');
+      
+      if (cachedVersion) {
+        document.getElementById('app-version').innerText = "Build: " + cachedVersion;
       }
+      if (cachedNotice) {
+        dbTexts.notice = cachedNotice;
+      }
+
+      // 2. 화면 로딩을 멈추지 않고, 백그라운드에서 조용히 최신 데이터를 가져옴
+      fetch(`${API_URL}?action=init`)
+        .then(res => res.json())
+        .then(initData => {
+          if(initData.success) {
+            document.getElementById('app-version').innerText = "Build: " + initData.version;
+            dbTexts.notice = initData.notice;
+            // 다음 접속을 위해 최신 데이터 로컬 스토리지에 저장
+            localStorage.setItem('cached_version', initData.version);
+            localStorage.setItem('cached_notice', initData.notice);
+          }
+        })
+        .catch(e => {
+          if (!cachedVersion) document.getElementById('app-version').innerText = "Build: 확인 불가";
+        });
     };
 
-    // [이전 접속 기록으로 입장] 버튼 클릭 시 실행
     function autoLogin() {
       const savedKey = localStorage.getItem('netflix_auth_key');
       if (savedKey) {
@@ -132,7 +144,6 @@
       }
     }
 
-    // [새로 입장하기] 버튼 클릭 시 실행
     function verifyKey() {
       const keyInput = document.getElementById('auth-key-input').value.trim();
       if (!keyInput) {
@@ -216,7 +227,6 @@
 
     function showNotice() { showAlert("💬 문의사항", dbTexts.notice); }
 
-    // ★ 수정됨: 아코디언 스타일이 적용된 도움말 가이드
     function showGuide() {
       const guideHtml = `
         <div style="text-align: left; max-height: 50vh; overflow-y: auto;">
@@ -265,4 +275,3 @@
   </script>
 </body>
 </html>
-
