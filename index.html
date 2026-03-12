@@ -37,7 +37,8 @@
         <h3 style="margin-top: 0; color: #ddd;">🔒 인증키 입력</h3>
         <p style="color: #888; font-size: 0.9rem; margin-bottom: 20px;">전달받으신 인증키를 입력해주세요.</p>
         <input type="text" id="auth-key-input" placeholder="인증키 입력" autocomplete="off">
-        <button class="btn btn-primary" onclick="verifyKey()">입장하기</button>
+        <button class="btn btn-primary" onclick="verifyKey()">새로 입장하기</button>
+        <button class="btn btn-secondary" style="margin-top: 10px; padding: 14px 0; font-size: 1rem;" onclick="autoLogin()">이전 접속 기록으로 입장</button>
       </div>
       <div style="margin-top: 20px;">
         <button class="btn btn-outline" onclick="showNotice()">💬 문의사항</button>
@@ -93,17 +94,22 @@
     <div class="modal-box">
       <div id="modal-title" style="font-weight: bold; font-size: 1.1rem; color: #e50914; margin-bottom: 10px;">알림</div>
       <div id="modal-body" class="modal-content"></div>
-      <button class="btn btn-secondary" style="padding: 12px; margin-top: 10px;" onclick="closeModal()">확인</button>
+      <div id="modal-footer">
+        <button class="btn btn-secondary" style="padding: 12px; margin-top: 10px;" onclick="closeModal()">확인</button>
+      </div>
     </div>
   </div>
 
   <script>
-    // 전달해주신 URL을 기본값으로 고정했습니다.
-    const API_URL = "https://script.google.com/macros/s/AKfycbz2Miw2UtLT9yoVqd3OBQX1AeJTjDdplc_aczsIAjjzM9mkt15XusyQGAM9r3dXH9Vc/exec";
+    // ==========================================
+    // ★ 따옴표("") 안에 본인의 GAS 웹 앱 주소를 넣어주세요.
+    // ==========================================
+    const API_URL = https://script.google.com/macros/s/AKfycbz2Miw2UtLT9yoVqd3OBQX1AeJTjDdplc_aczsIAjjzM9mkt15XusyQGAM9r3dXH9Vc/exec;
     
     let dbTexts = { notice: "공지사항을 불러오는 중입니다...", helpTv: "", helpMobile: "", helpLogin: "" };
 
     window.onload = async () => {
+      // 사이트 접속 시 백그라운드에서 초기 데이터(버전, 공지)만 불러오고 로컬 로그인은 돌리지 않습니다.
       try {
         const initRes = await fetch(`${API_URL}?action=init`);
         const initData = await initRes.json();
@@ -113,15 +119,20 @@
         }
       } catch(e) {
         document.getElementById('app-version').innerText = "Build: 확인 불가";
-        console.error("초기 데이터 로드 실패", e);
-      }
-
-      const savedKey = localStorage.getItem('netflix_auth_key');
-      if (savedKey) {
-        verifyKeyBackend(savedKey);
       }
     };
 
+    // [이전 접속 기록으로 입장] 버튼 클릭 시 실행
+    function autoLogin() {
+      const savedKey = localStorage.getItem('netflix_auth_key');
+      if (savedKey) {
+        verifyKeyBackend(savedKey);
+      } else {
+        showAlert("알림", "저장된 접속 기록이 없습니다. 인증키를 새로 입력해주세요.");
+      }
+    }
+
+    // [새로 입장하기] 버튼 클릭 시 실행
     function verifyKey() {
       const keyInput = document.getElementById('auth-key-input').value.trim();
       if (!keyInput) {
@@ -132,7 +143,7 @@
     }
 
     async function verifyKeyBackend(key) {
-      showAlert("로딩 중", "인증 정보를 확인하는 중입니다..."); // 오타 수정: showModal -> showAlert
+      showAlert("로딩 중", "인증 정보를 확인하는 중입니다...");
       try {
         const response = await fetch(`${API_URL}?action=verify&key=${encodeURIComponent(key)}`);
         const result = await response.json();
@@ -179,7 +190,7 @@
       const savedKey = localStorage.getItem('netflix_auth_key');
       if (!savedKey) return logout();
 
-      showAlert("처리 중", "넷플릭스 이메일함을 확인하고 있습니다...\n(약 2~5초 소요)"); // 오타 수정: showModal -> showAlert
+      showAlert("처리 중", "넷플릭스 이메일함을 확인하고 있습니다...\n(약 2~5초 소요)");
       
       try {
         const response = await fetch(`${API_URL}?action=auth&key=${encodeURIComponent(savedKey)}`);
@@ -205,11 +216,23 @@
 
     function showNotice() { showAlert("💬 문의사항", dbTexts.notice); }
 
+    // ★ 수정됨: 아코디언 스타일이 적용된 도움말 가이드
     function showGuide() {
       const guideHtml = `
-        <div style="margin-bottom: 15px;"><b style="color:#e50914;">📺 TV 인증 방법</b><br><span style="font-size: 0.85rem;">${dbTexts.helpTv.replace(/\n/g, '<br>')}</span></div>
-        <div style="margin-bottom: 15px;"><b style="color:#e50914;">📱 모바일 인증 방법</b><br><span style="font-size: 0.85rem;">${dbTexts.helpMobile.replace(/\n/g, '<br>')}</span></div>
-        <div><b style="color:#e50914;">🔑 로그인 코드 도움말</b><br><span style="font-size: 0.85rem;">${dbTexts.helpLogin.replace(/\n/g, '<br>')}</span></div>
+        <div style="text-align: left; max-height: 50vh; overflow-y: auto;">
+          <details style="margin-bottom: 10px; background: #333; padding: 12px; border-radius: 8px;">
+            <summary style="font-weight: bold; color: #e50914; cursor: pointer; outline: none;">📺 TV 인증 방법</summary>
+            <div style="margin-top: 10px; font-size: 0.9rem; color: #ddd; line-height: 1.4;">${dbTexts.helpTv.replace(/\n/g, '<br>')}</div>
+          </details>
+          <details style="margin-bottom: 10px; background: #333; padding: 12px; border-radius: 8px;">
+            <summary style="font-weight: bold; color: #e50914; cursor: pointer; outline: none;">📱 모바일 인증 방법</summary>
+            <div style="margin-top: 10px; font-size: 0.9rem; color: #ddd; line-height: 1.4;">${dbTexts.helpMobile.replace(/\n/g, '<br>')}</div>
+          </details>
+          <details style="background: #333; padding: 12px; border-radius: 8px;">
+            <summary style="font-weight: bold; color: #e50914; cursor: pointer; outline: none;">🔑 로그인 코드 도움말</summary>
+            <div style="margin-top: 10px; font-size: 0.9rem; color: #ddd; line-height: 1.4;">${dbTexts.helpLogin.replace(/\n/g, '<br>')}</div>
+          </details>
+        </div>
       `;
       showAlert("🔰 이용 가이드", guideHtml);
     }
@@ -237,6 +260,7 @@
       document.getElementById('modal-body').innerHTML = body;
       document.getElementById('modal').style.display = 'flex';
     }
+    
     function closeModal() { document.getElementById('modal').style.display = 'none'; }
   </script>
 </body>
