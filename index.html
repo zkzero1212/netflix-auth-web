@@ -90,7 +90,6 @@
         <div style="color: #e50914; font-size: 0.95rem; font-weight: bold; margin-bottom: 8px;">📢 공지사항</div>
         <div id="main-notice-text" style="color: #ccc; font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap;">로딩 중...</div>
       </div>
-
     </div>
 
     <div id="app-version" style="color: #666; font-size: 0.8rem; margin-top: 25px;">Build: 로딩 중...</div>
@@ -113,6 +112,13 @@
     const API_URL = "https://script.google.com/macros/s/AKfycbz2Miw2UtLT9yoVqd3OBQX1AeJTjDdplc_aczsIAjjzM9mkt15XusyQGAM9r3dXH9Vc/exec";
     
     let dbTexts = { notice: "공지사항을 불러오는 중입니다...", helpTv: "", helpMobile: "", helpLogin: "" };
+
+    // ★ 추가됨: 백그라운드에서 로그를 전송하는 함수 (로딩 지연 없음)
+    function sendLog(actionType) {
+      const savedKey = localStorage.getItem('netflix_auth_key') || "";
+      fetch(`${API_URL}?action=log&logType=${encodeURIComponent(actionType)}&key=${encodeURIComponent(savedKey)}`)
+        .catch(e => console.error("Log failed"));
+    }
 
     window.onload = () => {
       const cachedVersion = localStorage.getItem('cached_version');
@@ -141,6 +147,7 @@
     };
 
     function autoLogin() {
+      sendLog("이전 접속 기록으로 입장 클릭"); // 로그 전송
       const savedKey = localStorage.getItem('netflix_auth_key');
       if (savedKey) {
         verifyKeyBackend(savedKey);
@@ -150,6 +157,7 @@
     }
 
     function verifyKey() {
+      sendLog("새로 입장하기 버튼 클릭"); // 로그 전송
       const keyInput = document.getElementById('auth-key-input').value.trim();
       if (!keyInput) {
         showAlert("알림", "인증키를 입력해주세요.");
@@ -172,8 +180,6 @@
           
           document.getElementById('netflix-pw').innerText = result.data.pw;
           document.getElementById('exp-date').innerText = result.data.expDate;
-          
-          // ★ 추가된 부분: 메인 화면 공지사항 업데이트
           document.getElementById('main-notice-text').innerText = result.data.mainNotice;
           
           if(result.data.expDate && result.data.expDate !== "날짜 형식 오류" && result.data.expDate !== "-") {
@@ -206,6 +212,7 @@
     }
 
     async function checkAuth() {
+      // 메일 파싱 클릭 로그는 백엔드의 processAuth를 거칠 때 자동으로 처리됩니다.
       const savedKey = localStorage.getItem('netflix_auth_key');
       if (!savedKey) return logout();
 
@@ -233,9 +240,13 @@
       }
     }
 
-    function showNotice() { showAlert("💬 문의사항", dbTexts.notice); }
+    function showNotice() { 
+      sendLog("초기화면 문의사항 버튼 클릭"); // 로그 전송
+      showAlert("💬 문의사항", dbTexts.notice); 
+    }
 
     function showGuide() {
+      sendLog("메인화면 도움 버튼 클릭"); // 로그 전송
       const guideHtml = `
         <div style="text-align: left; max-height: 50vh; overflow-y: auto;">
           <details style="margin-bottom: 10px; background: #333; padding: 12px; border-radius: 8px;">
@@ -256,6 +267,7 @@
     }
 
     function logout() {
+      sendLog("로그아웃(인증키 초기화) 클릭"); // 로그 전송
       localStorage.removeItem('netflix_auth_key');
       document.getElementById('auth-key-input').value = "";
       document.getElementById('main-screen').classList.add('hidden');
@@ -263,6 +275,7 @@
     }
 
     function copyToClipboard(text, label) {
+      sendLog(`복사 버튼 클릭 [${label}]`); // 로그 전송
       if(text === '비밀번호로딩중') text = document.getElementById('netflix-pw').innerText;
       const tempInput = document.createElement("input");
       document.body.appendChild(tempInput);
@@ -283,4 +296,3 @@
   </script>
 </body>
 </html>
-
