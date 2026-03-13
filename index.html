@@ -113,10 +113,10 @@
     
     let dbTexts = { notice: "공지사항을 불러오는 중입니다...", helpTv: "", helpMobile: "", helpLogin: "" };
 
-    // ★ 추가됨: 백그라운드에서 로그를 전송하는 함수 (로딩 지연 없음)
-    function sendLog(actionType) {
+    // ★ 수정됨: resultMsg (결과값) 도 함께 전송
+    function sendLog(actionType, resultMsg = "성공") {
       const savedKey = localStorage.getItem('netflix_auth_key') || "";
-      fetch(`${API_URL}?action=log&logType=${encodeURIComponent(actionType)}&key=${encodeURIComponent(savedKey)}`)
+      fetch(`${API_URL}?action=log&logType=${encodeURIComponent(actionType)}&key=${encodeURIComponent(savedKey)}&resultMsg=${encodeURIComponent(resultMsg)}`)
         .catch(e => console.error("Log failed"));
     }
 
@@ -147,19 +147,20 @@
     };
 
     function autoLogin() {
-      sendLog("이전 접속 기록으로 입장 클릭"); // 로그 전송
       const savedKey = localStorage.getItem('netflix_auth_key');
       if (savedKey) {
+        // 결과 기록은 verifyKeyBackend(백엔드)에서 알아서 남기므로 여기서 sendLog 불필요
         verifyKeyBackend(savedKey);
       } else {
+        sendLog("이전 접속 기록으로 입장 시도", "실패: 저장된 키 없음"); 
         showAlert("알림", "저장된 접속 기록이 없습니다. 인증키를 새로 입력해주세요.");
       }
     }
 
     function verifyKey() {
-      sendLog("새로 입장하기 버튼 클릭"); // 로그 전송
       const keyInput = document.getElementById('auth-key-input').value.trim();
       if (!keyInput) {
+        sendLog("새로 입장하기 버튼 클릭", "실패: 빈칸 입력");
         showAlert("알림", "인증키를 입력해주세요.");
         return;
       }
@@ -212,7 +213,6 @@
     }
 
     async function checkAuth() {
-      // 메일 파싱 클릭 로그는 백엔드의 processAuth를 거칠 때 자동으로 처리됩니다.
       const savedKey = localStorage.getItem('netflix_auth_key');
       if (!savedKey) return logout();
 
@@ -241,12 +241,12 @@
     }
 
     function showNotice() { 
-      sendLog("초기화면 문의사항 버튼 클릭"); // 로그 전송
+      sendLog("초기화면 문의사항 버튼 클릭", "성공"); 
       showAlert("💬 문의사항", dbTexts.notice); 
     }
 
     function showGuide() {
-      sendLog("메인화면 도움 버튼 클릭"); // 로그 전송
+      sendLog("메인화면 도움 버튼 클릭", "성공"); 
       const guideHtml = `
         <div style="text-align: left; max-height: 50vh; overflow-y: auto;">
           <details style="margin-bottom: 10px; background: #333; padding: 12px; border-radius: 8px;">
@@ -267,7 +267,7 @@
     }
 
     function logout() {
-      sendLog("로그아웃(인증키 초기화) 클릭"); // 로그 전송
+      sendLog("로그아웃(인증키 초기화) 클릭", "성공");
       localStorage.removeItem('netflix_auth_key');
       document.getElementById('auth-key-input').value = "";
       document.getElementById('main-screen').classList.add('hidden');
@@ -275,7 +275,7 @@
     }
 
     function copyToClipboard(text, label) {
-      sendLog(`복사 버튼 클릭 [${label}]`); // 로그 전송
+      sendLog(`복사 버튼 클릭 [${label}]`, "성공");
       if(text === '비밀번호로딩중') text = document.getElementById('netflix-pw').innerText;
       const tempInput = document.createElement("input");
       document.body.appendChild(tempInput);
